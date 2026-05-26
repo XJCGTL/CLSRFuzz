@@ -1,3 +1,4 @@
+# Preserve signal names exactly as they appear in each RTL project for traceability.
 signal_naming_policy: preserve_raw_rtl_names
 cores:
   boom:

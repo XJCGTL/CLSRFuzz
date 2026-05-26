@@ -3,6 +3,7 @@
 _start:
   la   t0, data_base
   li   t1, 0
+  # 256 page-stride loads are enough to saturate typical small MSHR/LFB designs.
   li   t2, 256
 loop_load:
   lw   t3, 0(t0)

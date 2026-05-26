@@ -2,6 +2,7 @@
 .globl _start
 _start:
   li t0, 0
+  # 4096 alternating branches generate enough unique history to pressure BTB entries.
   li t1, 4096
 loop_branch:
   addi t0, t0, 1

@@ -15,6 +15,10 @@ RESOURCE_PATTERNS = {
     "TLB": [r"tlb", r"ptw", r"pagewalk"],
 }
 
+# Heuristic confidence for static regex hits:
+# - base score starts at 0.4 when any pattern matches
+# - each additional matched pattern adds 0.2
+# - cap at 0.95 to keep room for manual review
 BASE_CONFIDENCE = 0.4
 PATTERN_HIT_BONUS = 0.2
 MAX_CONFIDENCE = 0.95

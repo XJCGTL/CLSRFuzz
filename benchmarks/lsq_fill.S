@@ -3,6 +3,7 @@
 _start:
   la   t0, data_base
   li   t1, 0
+  # 512 mixed load/store iterations target deep LSQ pressure in simulation.
   li   t2, 512
 loop_lsq:
   lw   t3, 0(t0)

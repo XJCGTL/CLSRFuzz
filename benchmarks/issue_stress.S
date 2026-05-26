@@ -6,6 +6,7 @@ _start:
   li t1, 5
   li t2, 7
   li t3, 11
+  # 2000 iterations keep back-end ports continuously busy for measurable pressure.
   li t4, 2000
   li t5, 0
 loop_issue:
