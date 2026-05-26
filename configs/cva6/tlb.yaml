@@ -1,0 +1,11 @@
+core: cva6
+resource: TLB
+sim: gem5
+program: benchmarks/mshr_sweep.S
+injection:
+  strategy: keep_ptw_busy
+  start_cycle: 1200
+  duration: 4500
+threshold:
+  metric: tlb_miss_rate
+  condition: ">= 0.2"

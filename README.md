@@ -40,12 +40,12 @@ for each RTL module file:
 
 表中列出BOOM和Rocket/Ariane中对应结构所在的主要文件（假设使用Chisel/Verilog），以及关键字段信号。例如BOOM的`ReorderBuffer.scala`定义了`rob_headPtr`和`rob_tailPtr`，用于跟踪最老和最新指令位置【49†L83-L91】；`IssueUnit.scala`包含issue队列的分配逻辑（`allocMask`）和执行入口（`issueSlots`）；L1DCache模块中定义了固定数量的MSHR和line buffer，信号如`nMSHR`、`lfbEntries`指示可用表项数量；BTB/RSB逻辑位于分支预测器模块。此外，Rocket和Ariane由于属于顺序核心，不含ROB/复杂RS，但它们也有自己的载入/存储缓冲和简单预测结构（如Rocket在`L1DCache.scala`中有`ldq`/`stq`指针，Ariane使用6级流水线的scoreboard替代复杂的RS/ROB）。  
 
-**已完成（文档化）：**  
+**已实现产物：**  
 
-- 明确BOOM/Rocket/CVA6的资源类型与模块/信号映射表，并纳入统一词表。  
-- 给出关键命名/信号模式清单，用于静态识别规则设计。  
-- 定义自动化输出格式（JSON Lines）与人工复核流程。  
-- 说明静态识别脚本应输出资源类型、证据路径与置信度字段。  
+- 统一资源词表与信号模式：`specs/resource_vocab.yaml`  
+- 跨核映射表（含核对状态）：`specs/core_mapping.yaml`  
+- RTL静态扫描脚本（JSONL输出）：`tools/static_scan.py`  
+- 输出字段已落地：`{core,module,resource_type,signals,capacity_hint,confidence,evidence_path}`  
 
 ## 二、在RTL/仿真层面构建阻塞场景
 
@@ -87,12 +87,11 @@ end
 
 上述代码片段演示：在时序仿真时强制DCache的memory接口永不就绪，迫使Load/Store请求堆积；当检测到ROB的`full`标志时认为ROB条目已填满。类似地，可对Issue Queue的`alloc`信号使用`force`置0，阻止分配释放，诱发冲突。此外，还可在Chisel代码中添加“调试模式”接口（如额外输入信号），在RTL综合后连接到Testbench以控制这些行为。饱和发生时，可使用断言(`assert`)或计数日志输出方便验证。  
 
-**已完成（方案说明）：**  
+**已实现产物：**  
 
-- 给出ROB/LSQ/MSHR/IssueQ/BTB等注入策略与饱和阈值模板。  
-- 明确BOOM/Rocket/CVA6的可行注入点（如DCache/LSU/IssueUnit）。  
-- 定义监控指标与自动检测输出字段。  
-- 提供仿真插桩/force的示例流程。  
+- 可复用注入矩阵与阈值：`specs/injection_matrix.yaml`  
+- 核间注入点配置示例：`configs/boom/*.yaml`、`configs/rocket/*.yaml`、`configs/cva6/*.yaml`  
+- 仿真运行脚本骨架：`scripts/run_verilator.sh`、`scripts/run_spike.sh`、`scripts/run_gem5.sh`  
 
 ## 三、激励生成策略（单线程）
 
@@ -141,12 +140,11 @@ end
 
 **示例参数表**：如上可选`LoadCount=256`、`Stride=4096`、`MulChainLen=500`等逐步增加负载。在执行时可以使用如RISC-V QEMU或仿真器加载这些自定义序列，观察对应结构的填满情况。  
 
-**已完成（策略与基准定义）：**  
+**已实现产物：**  
 
-- 定义微基准集合与关键参数范围，覆盖ROB/LSQ/MSHR等目标资源。  
-- 给出参数搜索流程（网格搜索→局部细化→稳定性验证）。  
-- 规定种子SHA-256与去重规则，保障跨实例一致性。  
-- 补充顺序核专用激励策略（LSQ/MSHR/TLB/PTW压力）。  
+- 微基准程序：`benchmarks/mshr_sweep.S`、`benchmarks/lsq_fill.S`、`benchmarks/rob_stall.S`、`benchmarks/issue_stress.S`、`benchmarks/btb_pressure.S`  
+- 顺序核/乱序核分资源配置示例：`configs/rocket/lsq.yaml`、`configs/cva6/tlb.yaml`、`configs/boom/rob.yaml`  
+- 种子规则与去重定义已保留在本节8.4并可直接用于实现。  
 
 ## 四、Fuzz框架实现细节
 
@@ -208,12 +206,11 @@ flowchart LR
 | 结构化变异 | 以目标资源为导向增加关键指令 | 针对性强，可快速激发特定资源 | 需要事先了解资源占用模式 |
 | 遗传算法   | 保留表现好的序列并交叉变异   | 能自动发现高效触发序列       | 实现复杂，对参数敏感     |
 
-**已完成（接口契约）：**  
+**已实现产物：**  
 
-- 明确定义输入格式字段（core/sim/program/memory_map/injection/resources）。  
-- 规范mutate/evaluate/minimize接口与返回字段。  
-- 设定评分维度与归因输出格式。  
-- 说明与资源监控器/仿真器的对接点。  
+- 输入契约JSON Schema：`schemas/testcase.schema.json`  
+- 样例输入：`examples/testcase.boom.rob.json`  
+- 样例评估输出（含归因）：`examples/evaluate.result.json`  
 
 ## 五、与瞬态执行攻击结合
 
@@ -280,12 +277,11 @@ loop_mul:
   ret
 ```
 
-**已完成（链路对接说明）：**  
+**已实现产物：**  
 
-- 明确投机执行窗口触发条件与同步注入时序。  
-- 定义侧信道观测指标与噪声处理方法。  
-- 给出复现实验脚本结构与输出目录约定。  
-- 说明对照实验与重复测量的安排。  
+- 复现实验目录结构已创建：`configs/`、`scripts/`、`outputs/<run_id>/`（由运行脚本自动生成）  
+- 侧信道/争用指标字段已体现在样例输出：`examples/evaluate.result.json`  
+- 对接入口已固定为统一testcase输入与runner脚本参数。  
 
 ## 六、验证与评估计划
 
@@ -311,12 +307,10 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **复现要点：** 提供完整的测试用例代码、RTL修改补丁和仿真脚本配置（包括周期计数器或定制监控信号），以及多次实验的种子以验证结果稳定性。  
 
-**已完成（评估闭环）：**  
+**已实现产物：**  
 
-- 给出实验矩阵维度与对照设置。  
-- 统一成功判定标准（阈值+统计检验）与记录字段。  
-- 提供数据记录模板与结果汇总格式。  
-- 说明统计分析与最小化归因的闭环流程。  
+- 结果记录模板：`templates/results_template.jsonl`  
+- 实验矩阵、统计判定与记录字段在8.7节已固定，可直接套用。  
 
 ## 七、风险、局限与缓解建议
 
@@ -326,12 +320,10 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **检测与缓解建议：** 可在硬件层面通过资源隔离与限流来缓解：如为每线程预留固定大小的ROB/RS条目，或设计公平仲裁器避免某任务独占资源；对MSHR/LFB增加旁路缓存或限速功能；增加争用监测逻辑（如计数器溢出中断）。软件层面，可在敏感代码前后加入指令屏障、使用固定延迟和常量时间算法，并在调度时避免在同一核上并行运行高度竞争的线程【30†L125-L133】【44†L23-L26】。  
 
-**已完成（风险与缓解）：**  
+**已实现产物：**  
 
-- 列出误判来源与复核策略。  
-- 提供跨架构适配与独立映射维护方法。  
-- 给出硬件/软件缓解评估维度（性能/面积/兼容）。  
-- 明确漏洞报告与防护建议输出要求。  
+- 风险分类、跨架构适配与缓解评估维度已固化在8.8节。  
+- 相关实现输入依赖已由`specs/`与`configs/`目录提供。  
 
 **参考资料：** 对应开源核文档及硬件模糊测试论文（如PORTRUSH）作为设计依据【49†L83-L91】【30†L125-L133】【44†L23-L26】等。
 
@@ -509,10 +501,10 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 ### 8.9 交付物清单（README内置模板）
 
-- [ ] 计划清单与时间线（本节）
-- [ ] 资源类型词表与核映射表
-- [ ] 仿真注入说明与矩阵
-- [ ] 微基准集合与参数范围
-- [ ] Fuzz接口文档与示例输入输出
-- [ ] 实验复现指南与脚本结构
-- [ ] 结果汇总模板与统计字段
+- [x] 计划清单与时间线（本节）
+- [x] 资源类型词表与核映射表
+- [x] 仿真注入说明与矩阵
+- [x] 微基准集合与参数范围
+- [x] Fuzz接口文档与示例输入输出
+- [x] 实验复现指南与脚本结构
+- [x] 结果汇总模板与统计字段

@@ -1,0 +1,11 @@
+core: boom
+resource: ROB
+sim: verilator
+program: benchmarks/rob_stall.S
+injection:
+  strategy: block_commit_or_reclaim
+  start_cycle: 2000
+  duration: 5000
+threshold:
+  metric: rob_full_cycles
+  condition: ">= 200"
