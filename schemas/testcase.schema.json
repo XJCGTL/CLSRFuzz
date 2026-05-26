@@ -37,7 +37,7 @@
     },
     "resources": {
       "type": "array",
-      "description": "Resource types to monitor/score during execution; may include injection.resource plus additional observers.",
+      "description": "Resource types to monitor/score during execution. Include injection.resource explicitly when that resource must be scored.",
       "items": {"type": "string"},
       "minItems": 1
     }

@@ -36,13 +36,15 @@ def scan_file(path: Path, core: str):
     findings = []
     for resource, patterns in COMPILED_RESOURCE_PATTERNS.items():
         matched = []
+        matched_pattern_count = 0
         for regex in patterns:
             m = regex.search(text)
             if m:
+                matched_pattern_count += 1
                 matched.append(m.group(0))
         if matched:
             unique_matches = sorted(set(matched))
-            confidence = min(BASE_CONFIDENCE + PATTERN_HIT_BONUS * len(unique_matches), MAX_CONFIDENCE)
+            confidence = min(BASE_CONFIDENCE + PATTERN_HIT_BONUS * matched_pattern_count, MAX_CONFIDENCE)
             findings.append(
                 {
                     "core": core,

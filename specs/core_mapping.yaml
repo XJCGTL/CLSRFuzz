@@ -26,7 +26,7 @@ cores:
       module: BTB.scala
       signals: [btb_index]
       status: pending
-    # BOOM places BTB and RSB logic in related predictor code paths.
+    # BOOM maps BTB and RSB to the same predictor module file (BTB.scala).
     RSB:
       module: BTB.scala
       signals: [rsbPush]
