@@ -421,7 +421,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **种子管理与去重规则**
 
-- `seed_hash = hash(normalized_trace + memory_map + injection_schedule)`（用于唯一去重）
+- `seed_hash = hash(canonical_json({normalized_trace, memory_map, injection_schedule}))`（使用规范化序列化确保跨实现一致）
 - 归一化规则：寄存器重命名、地址按页对齐、删除等价NOP
 - 去重条件：`(core, resource_type, seed_hash)` 唯一
 
@@ -461,7 +461,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 ### 8.6 与瞬态执行链路对接
 
-- **飞地触发条件**：秘密位依赖分支 + 可训练预测器
+- **飞地触发条件**：秘密位依赖分支 + 可训练预测器（飞地=预测执行的投机窗口/Speculative Domain）
 - **同步竞争注入时序**：分支发射后、分支解析前的窗口（记录`branch_resolve_cycle`）
 - **侧信道观测指标**：`cycle_delta`、`rob_full_cycles`、`btb_miss_rate`
 - **噪声处理**：重复N次取中位数、与无注入对照作差
@@ -486,7 +486,8 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **成功判定与统计方法**
 
-- 成功：`score >= threshold` 且 `p-value < 0.05`（`threshold` 由基线实验确定，如均值+3σ或占用率≥90%）
+- 成功：`score >= statistical_threshold` 且 `p-value < 0.05`（统计阈值由基线实验确定，如均值+3σ）
+- 占用类指标：使用 `occupancy_threshold`（如占用率≥90%）并记录对应持续周期数
 - 对照：无注入/随机注入/替换资源类型
 - 记录：均值、标准差、效应量（Cohen's d）
 
