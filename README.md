@@ -486,7 +486,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **成功判定与统计方法**
 
-- 成功: `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如均值+3σ)
+- 成功 (时延类指标): `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如均值+3σ；p-value用于检验“注入与对照无差异”的零假设)
 - 占用类指标: 使用 `occupancy_threshold` (如占用率≥90%) 并记录对应持续周期数
 - 对照: 无注入/随机注入/替换资源类型
 - 记录: 均值、标准差、效应量 (Cohen's d)
