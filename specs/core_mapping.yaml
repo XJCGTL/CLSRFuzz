@@ -24,7 +24,11 @@ cores:
       status: pending
     BTB:
       module: BTB.scala
-      signals: [btb_index, rsbPush]
+      signals: [btb_index]
+      status: pending
+    RSB:
+      module: BTB.scala
+      signals: [rsbPush]
       status: pending
     TLB:
       module: TLB.scala
@@ -53,7 +57,11 @@ cores:
       status: pending
     BTB:
       module: FetchUnit.scala
-      signals: [btb_index, ras_push]
+      signals: [btb_index]
+      status: pending
+    RSB:
+      module: FetchUnit.scala
+      signals: [ras_push]
       status: pending
     TLB:
       module: PTW.scala
@@ -84,6 +92,10 @@ cores:
       module: BranchPredictor.sv
       signals: [btb_index]
       status: pending
+    RSB:
+      module: null
+      signals: []
+      status: not_applicable
     TLB:
       module: MMU.sv
       signals: [ptwBusy]

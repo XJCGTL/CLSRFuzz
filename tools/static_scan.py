@@ -14,6 +14,10 @@ RESOURCE_PATTERNS = {
     "RSB": [r"rsb", r"returnstack", r"ras"],
     "TLB": [r"tlb", r"ptw", r"pagewalk"],
 }
+COMPILED_RESOURCE_PATTERNS = {
+    resource: [re.compile(p) for p in patterns]
+    for resource, patterns in RESOURCE_PATTERNS.items()
+}
 
 # Heuristic confidence for static regex hits:
 # - base score starts at 0.4 when any pattern matches
@@ -31,10 +35,9 @@ def scan_file(path: Path, core: str):
         return []
     lower = text.lower()
     findings = []
-    for resource, patterns in RESOURCE_PATTERNS.items():
+    for resource, patterns in COMPILED_RESOURCE_PATTERNS.items():
         matched = []
-        for p in patterns:
-            regex = re.compile(p)
+        for regex in patterns:
             m = regex.search(lower)
             if m:
                 matched.append(m.group(0))

@@ -3,7 +3,7 @@
 _start:
   la   t0, data_base
   li   t1, 0
-  # 256 page-stride loads are enough to saturate typical small MSHR/LFB designs.
+  # Default sweep count; tune per core/config when MSHR depth is known.
   li   t2, 256
 loop_load:
   lw   t3, 0(t0)
