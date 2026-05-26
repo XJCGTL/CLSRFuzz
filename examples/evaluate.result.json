@@ -1,0 +1,19 @@
+{
+  "score": 78.2,
+  "labels": ["ROB", "contention", "spec_window"],
+  "metrics": {
+    "rob_full_cycles": 442,
+    "cycle_delta": 97,
+    "btb_miss_rate": 0.18
+  },
+  "attribution": {
+    "seed_hash": "sha256:replace_with_real_hash",
+    "resource_type": "ROB",
+    "top_instrs": [12, 13, 14, 27],
+    "minimized_trace": [
+      "mul x5, x5, x6",
+      "addi x7, x7, 1",
+      "blt x7, 1000, loop_mul"
+    ]
+  }
+}

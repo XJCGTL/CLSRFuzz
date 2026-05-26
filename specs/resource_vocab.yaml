@@ -1,0 +1,42 @@
+resource_types:
+  - code: ROB
+    name: Reorder Buffer
+    patterns:
+      - "rob.*(head|tail|ptr|full)"
+    capacity_signals: [rob_headPtr, rob_tailPtr, rob_full]
+  - code: RS
+    name: Issue Queue / Reservation Station
+    patterns:
+      - "issue.*(slot|queue)"
+      - "rs.*(alloc|free)"
+    capacity_signals: [allocMask, issueEnq, freeMask]
+  - code: LSQ
+    name: Load Store Queue
+    patterns: ["ldq", "stq", "loadQueue", "storeQueue"]
+    capacity_signals: [ldq_head, stq_head, queueFull]
+  - code: MSHR
+    name: MSHR / Line Fill Buffer
+    patterns: ["mshr", "lfb", "lineBuffer"]
+    capacity_signals: [nMSHR, mshrCnt, lfbEntries]
+  - code: WB
+    name: Write Buffer
+    patterns: ["writeBuffer", "storeBuffer"]
+    capacity_signals: [storeBufferFull, bufFull]
+  - code: BTB
+    name: Branch Target Buffer
+    patterns:
+      - "btb.*(entry|index|hit)"
+    capacity_signals: [btb_index, btb_hit]
+  - code: RSB
+    name: Return Stack Buffer
+    patterns: ["rsb", "returnStack", "ras"]
+    capacity_signals: [rsbPush, rsbPop]
+  - code: TLB
+    name: TLB / PTW
+    patterns: ["tlb", "ptw", "pageWalk"]
+    capacity_signals: [ptwBusy, tlbMiss]
+signal_tokens:
+  pointer_or_counter: [headPtr, tailPtr, count, numEntries, occupancy]
+  allocate_release: [alloc, deq, enq, free, commit]
+  state: [full, empty, valid, ready, busy]
+  replacement: [repl, victim, evict]

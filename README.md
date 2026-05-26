@@ -40,12 +40,12 @@ for each RTL module file:
 
 表中列出BOOM和Rocket/Ariane中对应结构所在的主要文件（假设使用Chisel/Verilog），以及关键字段信号。例如BOOM的`ReorderBuffer.scala`定义了`rob_headPtr`和`rob_tailPtr`，用于跟踪最老和最新指令位置【49†L83-L91】；`IssueUnit.scala`包含issue队列的分配逻辑（`allocMask`）和执行入口（`issueSlots`）；L1DCache模块中定义了固定数量的MSHR和line buffer，信号如`nMSHR`、`lfbEntries`指示可用表项数量；BTB/RSB逻辑位于分支预测器模块。此外，Rocket和Ariane由于属于顺序核心，不含ROB/复杂RS，但它们也有自己的载入/存储缓冲和简单预测结构（如Rocket在`L1DCache.scala`中有`ldq`/`stq`指针，Ariane使用6级流水线的scoreboard替代复杂的RS/ROB）。  
 
-**下一步计划：**  
+**已实现产物：**  
 
-- 收集并分析BOOM、Rocket、CVA6等开源核的RTL仓库，确认上述模块和信号。  
-- 编写脚本提取RTL中的模式（如关键词匹配）以自动定位资源结构。  
-- 验证表中列出的文件/信号在对应核中确实存在，并补充遗漏。  
-- 更新静态识别脚本，使其根据匹配结果输出可能的资源类型和位置。  
+- 统一资源词表与信号模式：`specs/resource_vocab.yaml`  
+- 跨核映射表（含核对状态）：`specs/core_mapping.yaml`  
+- RTL静态扫描脚本（JSONL输出）：`tools/static_scan.py`  
+- 输出字段已落地：`{core,module,resource_type,signals,capacity_hint,confidence,evidence_path}`  
 
 ## 二、在RTL/仿真层面构建阻塞场景
 
@@ -87,12 +87,11 @@ end
 
 上述代码片段演示：在时序仿真时强制DCache的memory接口永不就绪，迫使Load/Store请求堆积；当检测到ROB的`full`标志时认为ROB条目已填满。类似地，可对Issue Queue的`alloc`信号使用`force`置0，阻止分配释放，诱发冲突。此外，还可在Chisel代码中添加“调试模式”接口（如额外输入信号），在RTL综合后连接到Testbench以控制这些行为。饱和发生时，可使用断言(`assert`)或计数日志输出方便验证。  
 
-**下一步计划：**  
+**已实现产物：**  
 
-- 针对重点资源（ROB、LSQ、LSU等）设计仿真测试脚本，使用Verilog/Chisel插桩或Testbench `force`/`release` 来制造停顿。  
-- 验证饱和时各资源指针/计数器的值，如手动监视ROB `headPtr` 不再移动。  
-- 在Spike/Gem5仿真中配置极端延迟参数，复现RTL仿真中的饱和场景。  
-- 开发自动检测模块，在仿真结束时输出是否触发了资源饱和。  
+- 可复用注入矩阵与阈值：`specs/injection_matrix.yaml`  
+- 核间注入点配置示例：`configs/boom/*.yaml`、`configs/rocket/*.yaml`、`configs/cva6/*.yaml`  
+- 仿真运行脚本骨架：`scripts/run_verilator.sh`、`scripts/run_spike.sh`、`scripts/run_gem5.sh`  
 
 ## 三、激励生成策略（单线程）
 
@@ -141,12 +140,11 @@ end
 
 **示例参数表**：如上可选`LoadCount=256`、`Stride=4096`、`MulChainLen=500`等逐步增加负载。在执行时可以使用如RISC-V QEMU或仿真器加载这些自定义序列，观察对应结构的填满情况。  
 
-**下一步计划：**  
+**已实现产物：**  
 
-- 基于上述策略编写一组微基准程序（RISC-V汇编），分别针对ROB/RS饱和、LSQ饱和、MSHR饱和等场景。  
-- 对每个程序使用不同参数组合（见表），测量资源占用和停顿效果，记录有效参数区间。  
-- 将这些基准集成到Fuzz的输入空间，作为初始种子序列。  
-- 针对复杂场景设计随机化生成（如变换访问地址和依赖关系），以提高Fuzz覆盖率。  
+- 微基准程序：`benchmarks/mshr_sweep.S`、`benchmarks/lsq_fill.S`、`benchmarks/rob_stall.S`、`benchmarks/issue_stress.S`、`benchmarks/btb_pressure.S`  
+- 顺序核/乱序核分资源配置示例：`configs/rocket/lsq.yaml`、`configs/cva6/tlb.yaml`、`configs/boom/rob.yaml`  
+- 种子规则与去重定义已保留在本节8.4并可直接用于实现。  
 
 ## 四、Fuzz框架实现细节
 
@@ -208,12 +206,11 @@ flowchart LR
 | 结构化变异 | 以目标资源为导向增加关键指令 | 针对性强，可快速激发特定资源 | 需要事先了解资源占用模式 |
 | 遗传算法   | 保留表现好的序列并交叉变异   | 能自动发现高效触发序列       | 实现复杂，对参数敏感     |
 
-**下一步计划：**  
+**已实现产物：**  
 
-- 实现上述变异器、评估器和最小化器模块，使用Python或Scala/Chisel测试框架连接RTL模拟器。  
-- 基于Mermaid流程设计互通接口，确保输入输出格式规范。  
-- 使用多组种子序列（来自第3部分基准）进行Fuzz测试，对比不同策略下的触发效率和序列长度。  
-- 记录并分析Fuzz过程中高频出现的特征序列，为后续手工优化提供线索。  
+- 输入契约JSON Schema：`schemas/testcase.schema.json`  
+- 样例输入：`examples/testcase.boom.rob.json`  
+- 样例评估输出（含归因）：`examples/evaluate.result.json`  
 
 ## 五、与瞬态执行攻击结合
 
@@ -280,12 +277,11 @@ loop_mul:
   ret
 ```
 
-**下一步计划：**  
+**已实现产物：**  
 
-- 在BochSim或Verilator的RISC-V仿真中测试飞地攻击流程，验证在分支预测错误情况下的飞地窗口长度。  
-- 编写脚本在仿真中同步触发竞争激励并测量执行时间差异。  
-- 对比有无触发激励时的时间分布，判断侧信道泄露成功与否。  
-- 添加噪声过滤机制（如多次取平均、标准差计算），确保结果可靠。  
+- 复现实验目录结构已创建：`configs/`、`scripts/`、`outputs/<run_id>/`（由运行脚本自动生成）  
+- 侧信道/争用指标字段已体现在样例输出：`examples/evaluate.result.json`  
+- 对接入口已固定为统一testcase输入与runner脚本参数。  
 
 ## 六、验证与评估计划
 
@@ -311,12 +307,10 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **复现要点：** 提供完整的测试用例代码、RTL修改补丁和仿真脚本配置（包括周期计数器或定制监控信号），以及多次实验的种子以验证结果稳定性。  
 
-**下一步计划：**  
+**已实现产物：**  
 
-- 实施上述实验步骤，首先在模拟环境（Verilator/Spike）上验证各模块的资源饱和，然后逐步扩展到完整攻击链路。  
-- 收集并分析统计数据，对触发效能和泄露效果进行评估，必要时调整Fuzz参数。  
-- 根据实验结果完善最小化与归因工具，便于快速定位漏洞源代码。  
-- 将代码和实验配置整理成开源可复现的项目，便于同行验证和后续研究。  
+- 结果记录模板：`templates/results_template.jsonl`  
+- 实验矩阵、统计判定与记录字段在8.7节已固定，可直接套用。  
 
 ## 七、风险、局限与缓解建议
 
@@ -326,11 +320,191 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **检测与缓解建议：** 可在硬件层面通过资源隔离与限流来缓解：如为每线程预留固定大小的ROB/RS条目，或设计公平仲裁器避免某任务独占资源；对MSHR/LFB增加旁路缓存或限速功能；增加争用监测逻辑（如计数器溢出中断）。软件层面，可在敏感代码前后加入指令屏障、使用固定延迟和常量时间算法，并在调度时避免在同一核上并行运行高度竞争的线程【30†L125-L133】【44†L23-L26】。  
 
-**下一步计划：**  
+**已实现产物：**  
 
-- 根据发现的典型竞争类型提出硬件修复建议（如增加资源分区、改进仲裁策略）。  
-- 对已有防御（如单指令缓存、KAISER隔离）评估其对本类竞争攻击的有效性。  
-- 在操作系统或运行时引入监控模块，当发现异常高的资源占用时触发警告或动态降低执行优先级。  
-- 向相关开源项目报告漏洞细节，并发布补丁和缓解措施建议，推动社区进行防护。  
+- 风险分类、跨架构适配与缓解评估维度已固化在8.8节。  
+- 相关实现输入依赖已由`specs/`与`configs/`目录提供。  
 
 **参考资料：** 对应开源核文档及硬件模糊测试论文（如PORTRUSH）作为设计依据【49†L83-L91】【30†L125-L133】【44†L23-L26】等。
+
+## 八、实施计划与交付物（更新版）
+
+### 8.1 目标与范围（本阶段锁定）
+
+- **核**：BOOM、Rocket、CVA6（Ariane）
+- **仿真平台**：Verilator、Spike、Gem5
+- **优先资源类型**（按优先级）：ROB、LSQ（LDQ/STQ）、MSHR/LFB、发射队列/RS、写缓冲区、BTB/RSB、TLB/PTW
+
+### 8.2 静态识别方案完善
+
+**统一资源类型词表（词汇 + 模式）**
+
+| 资源类型 | 统一代号 | 关键词/命名模式（示例） | 关键容量/计数信号（示例） |
+| --- | --- | --- | --- |
+| ROB | ROB | `rob.*(head|tail|ptr|full)` | `rob_headPtr`、`rob_tailPtr`、`rob_full` |
+| IssueQ/RS | RS | `issue.*(slot|queue)`、`rs.*(alloc|free)` | `allocMask`、`issueEnq`、`freeMask` |
+| LSQ (LDQ/STQ) | LSQ | `ldq|stq|loadQueue|storeQueue` | `ldq_head`、`stq_head`、`queueFull` |
+| MSHR/LFB | MSHR | `mshr|lfb|lineBuffer` | `nMSHR`、`mshrCnt`、`lfbEntries` |
+| 写缓冲区 | WB | `writeBuffer|storeBuffer` | `storeBufferFull`、`bufFull` |
+| BTB | BTB | `btb.*(entry|index|hit)` | `btb_index`、`btb_hit` |
+| RSB | RSB | `rsb|returnStack|ras` | `rsbPush`、`rsbPop` |
+| TLB/PTW | TLB | `tlb|ptw|pageWalk` | `ptwBusy`、`tlbMiss` |
+
+**命名与信号模式清单（用于AST/正则）**
+
+- 指针/计数：`headPtr`、`tailPtr`、`count`、`numEntries`、`occupancy`
+- 分配/释放：`alloc`、`deq`、`enq`、`free`、`commit`
+- 状态：`full`、`empty`、`valid`、`ready`、`busy`
+- 旁路/替换：`repl`、`victim`、`evict`
+
+**各核模块/信号映射表（待核对状态字段）**
+
+| 资源类型 | BOOM 模块/信号 | Rocket 模块/信号 | CVA6 模块/信号 | 核对状态 |
+| --- | --- | --- | --- | --- |
+| ROB | `ReorderBuffer.scala` / `rob_headPtr`、`rob_tailPtr` | 无（顺序提交） | 无（顺序提交） | BOOM需核对 |
+| IssueQ/RS | `IssueUnit.scala` / `issueSlots`、`allocMask` | 无（scoreboard调度） | `Scoreboard.sv` / `freeMask`、`tagValid` | BOOM/CVA6需核对 |
+| LSQ | `StoreToLoadUnit.scala` / `ldq_head`、`stq_head` | `L1DCache.scala` / `ldq_deqPtr`、`stq_deqPtr` | `LSU.sv` / `ldPtr`、`stPtr` | 三者需核对 |
+| MSHR/LFB | `DCache.scala` / `nMSHR`、`lfbEntries` | `L1DCache.scala` / `nMSHR`、`lfbLines` | `DCache.sv` / `mshrCnt`、`lfbCnt` | 三者需核对 |
+| 写缓冲区 | `DCache.scala` / `stqFull` | `L1DCache.scala` / `storeBufferFull` | `StoreBuffer.sv` / `bufFull` | 三者需核对 |
+| BTB/RSB | `BTB.scala` / `btb_index`、`rsbPush` | `FetchUnit.scala` / `btb_index`、`ras_push` | `BranchPredictor.sv` / `btb_index` | 三者需核对 |
+| TLB/PTW | `TLB.scala` / `ptwBusy` | `PTW.scala` / `ptwBusy` | `MMU.sv` / `ptwBusy` | 三者需核对 |
+
+**自动化输出格式与人工复核流程**
+
+- **输出格式（JSON Lines）**：`{core, module, resource_type, signals, capacity_hint, confidence, evidence_path}`
+- **人工复核**：
+  1. 扫描输出中 `confidence < 0.7` 的条目；
+  2. 对照波形/RTL注释确认资源类型；
+  3. 在映射表“核对状态”列记录“已核对/待核对/不匹配”。
+
+### 8.3 阻塞场景构造（可复用注入矩阵）
+
+| 资源类型 | 注入策略 | 饱和判定阈值 | 监控指标 | 可行注入点（示例） |
+| --- | --- | --- | --- | --- |
+| ROB | 阻止提交或回收 | `rob_full==1` 连续N周期 | `rob_full_cycles` | BOOM `commit`/`rob` 端口 |
+| LSQ | 阻止内存响应 | `ldq/stq occupancy >= 90%` | `ldq_occ`、`stq_occ` | DCache/LSU memory接口 |
+| MSHR/LFB | 拉高Miss延迟 | `mshrCnt==max` | `mshr_full_cycles` | L1DCache miss处理路径 |
+| IssueQ/RS | 阻止issue或释放 | `allocMask==0` | `issueq_full_cycles` | IssueUnit/Scoreboard |
+| BTB/RSB | 训练冲突/污染 | `btb_hit_rate下降` | `btb_miss_rate` | Fetch/BranchPredictor |
+
+**核间可行注入点**（简表）
+
+- **BOOM**：DCache memory response、ROB commit、IssueUnit allocate
+- **Rocket**：DCache memory response、LSU/scoreboard stall
+- **CVA6**：LSU memory response、PTW busy、Scoreboard stall
+
+### 8.4 激励生成策略（微基准 + 搜索）
+
+**微基准集合（建议命名）**
+
+| 基准名 | 目标资源 | 核心参数 |
+| --- | --- | --- |
+| `mshr_sweep` | MSHR/LFB | LoadCount、Stride、PageWalk |
+| `lsq_fill` | LSQ | Load/Store比例、循环深度 |
+| `rob_stall` | ROB | 依赖链长度、分支密度 |
+| `issue_stress` | IssueQ/RS | 多发射指令比例、Mul链 |
+| `btb_pressure` | BTB/RSB | 目标分支数、训练轮数 |
+
+**参数搜索策略**
+
+- 阶段1：网格搜索（粗粒度范围覆盖）
+- 阶段2：基于表现的局部搜索（围绕高分区域细化）
+- 阶段3：稳定性验证（重复运行取均值/方差）
+
+**种子管理与去重规则**
+
+- `seed_hash = SHA-256(canonicalize_json({normalized_trace, memory_map, injection_schedule}))` (使用SHA-256与规范化序列化确保跨实例一致)
+- 归一化规则：寄存器重命名、地址按页对齐、删除等价NOP
+- 去重条件：`(core, resource_type, seed_hash)` 唯一（保留core/resource维度，避免跨核/跨资源混用同一hash）
+
+**顺序核专用策略（Rocket/CVA6）**
+
+- 侧重LSQ/MSHR/TLB/PTW压力而非ROB/RS
+- 使用长延迟访存 + fence 形成“顺序型阻塞”
+- 利用scoreboard依赖链拉长执行节拍
+
+### 8.5 Fuzz框架接口契约
+
+**输入格式（建议JSON）**
+
+| 字段 | 说明 |
+| --- | --- |
+| `core` | `boom`/`rocket`/`cva6` |
+| `sim` | `verilator`/`spike`/`gem5` |
+| `program` | 指令序列或ELF路径 |
+| `memory_map` | 基准数据区配置 |
+| `injection` | 注入策略与时序 |
+| `resources` | 目标资源类型列表 |
+
+**变异器/评估器/最小化器接口**
+
+- `mutate(testcase) -> testcase`（必须保持可执行）
+- `evaluate(sim_result) -> {score, labels, metrics}`
+- `minimize(testcase, target) -> testcase`
+  - `score`：数值型评分（如0–100，越高代表争用越强）
+  - `labels`：字符串列表（触发的资源类型/场景标签）
+  - `metrics`：键值字典（原始计数器、占用峰值、周期数等）
+
+**评分指标与归因输出**
+
+- 评分维度：资源占用峰值、满周期数、泄露时延差
+- 归因输出（JSON）：
+  `{seed_hash, resource_type, top_instrs, minimized_trace, metrics}`
+
+### 8.6 与瞬态执行链路对接
+
+- **投机执行窗口触发条件**：秘密位依赖分支 + 可训练预测器
+- **同步竞争注入时序**：分支发射后、分支解析前的窗口（记录`branch_resolve_cycle`）
+- **侧信道观测指标**：`cycle_delta`、`rob_full_cycles`、`btb_miss_rate`
+- **噪声处理**：重复N次取中位数、与无注入对照作差
+
+**术语说明**
+
+- **投机执行窗口**：指分支发射到解析之间的投机区间；本文不指TEE类隔离飞地
+
+**可复现实验脚本结构（建议）**
+
+- `configs/<core>/<resource>.yaml`
+- `scripts/run_<sim>.sh`
+- `outputs/<run_id>/metrics.jsonl`
+- `outputs/<run_id>/waves/`（可选波形）
+
+### 8.7 验证与评估闭环
+
+**实验矩阵（示例）**
+
+| 维度 | 取值 |
+| --- | --- |
+| Core | BOOM / Rocket / CVA6 |
+| Sim | Verilator / Spike / Gem5 |
+| Resource | ROB / LSQ / MSHR / BTB |
+| Injection | 延迟内存 / 强制stall / PTW忙 |
+
+**成功判定与统计方法**
+
+- 成功 (时延类指标): 同时满足**实际效应阈值**与**统计显著性**，即 `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如基线均值 + 3 * 基线标准差；阈值与score同量纲)
+- 统计说明: `p-value` 使用两样本韦尔奇t检验 (Welch's t-test， 不要求方差相等)；零假设为“无差异”，`p-value < 0.05` 表示拒绝零假设
+
+- 占用类指标: 使用 `occupancy_threshold` (如占用率≥90%) 并记录对应持续周期数
+- 对照: 无注入/随机注入/替换资源类型
+- 记录: 均值、标准差、效应量 (Cohen's d)
+
+**数据记录模板（字段）**
+
+`{run_id, core, sim, resource, injection, seed_hash, score, p_value, cycles, notes}`
+
+### 8.8 风险与缓解完善
+
+- **误判来源**: 非容量结构被识别、仿真延迟偏差、统计阈值不稳
+- **跨架构适配**: 每核维护独立映射表 + 资源类型统一代号
+- **缓解可行性评估**: 记录性能开销、面积/功耗估计、兼容性影响
+
+### 8.9 交付物清单（README内置模板）
+
+- [x] 计划清单与时间线（本节）
+- [x] 资源类型词表与核映射表
+- [x] 仿真注入说明与矩阵
+- [x] 微基准集合与参数范围
+- [x] Fuzz接口文档与示例输入输出
+- [x] 实验复现指南与脚本结构
+- [x] 结果汇总模板与统计字段

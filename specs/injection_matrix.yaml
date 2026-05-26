@@ -1,0 +1,38 @@
+injection_matrix:
+  - resource: ROB
+    strategy: block_commit_or_reclaim
+    threshold: "rob_full == 1 for N cycles"
+    metrics: [rob_full_cycles]
+    inject_points:
+      boom: ["rob commit interface"]
+  - resource: LSQ
+    strategy: stall_memory_response
+    threshold: "ldq_or_stq_occupancy >= 0.9"
+    metrics: [ldq_occ, stq_occ]
+    inject_points:
+      boom: ["dcache memory response"]
+      rocket: ["l1d memory response"]
+      cva6: ["lsu memory response"]
+  - resource: MSHR
+    strategy: inflate_miss_latency
+    threshold: "mshr_count == max"
+    metrics: [mshr_full_cycles]
+    inject_points:
+      boom: ["l1d miss path"]
+      rocket: ["l1d miss path"]
+      cva6: ["dcache miss path"]
+  - resource: RS
+    strategy: stall_issue_or_release
+    threshold: "issue_alloc_mask == 0"
+    metrics: [issueq_full_cycles]
+    inject_points:
+      boom: ["issue unit"]
+      cva6: ["scoreboard"]
+  - resource: BTB
+    strategy: training_conflict_and_pollution
+    threshold: "btb_hit_rate drop"
+    metrics: [btb_miss_rate]
+    inject_points:
+      boom: ["fetch predictor"]
+      rocket: ["fetch predictor"]
+      cva6: ["branch predictor"]

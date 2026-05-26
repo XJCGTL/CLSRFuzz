@@ -1,0 +1,11 @@
+core: boom
+resource: MSHR
+sim: verilator
+program: benchmarks/mshr_sweep.S
+injection:
+  strategy: stall_memory_response
+  start_cycle: 1000
+  duration: 4000
+threshold:
+  metric: mshr_full_cycles
+  condition: ">= 100"

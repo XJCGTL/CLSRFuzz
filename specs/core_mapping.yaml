@@ -1,0 +1,103 @@
+# Preserve signal names exactly as they appear in each RTL project for traceability.
+signal_naming_policy: preserve_raw_rtl_names
+cores:
+  boom:
+    ROB:
+      module: ReorderBuffer.scala
+      signals: [rob_headPtr, rob_tailPtr]
+      status: pending
+    RS:
+      module: IssueUnit.scala
+      signals: [issueSlots, allocMask]
+      status: pending
+    LSQ:
+      module: StoreToLoadUnit.scala
+      signals: [ldq_head, stq_head]
+      status: pending
+    MSHR:
+      module: DCache.scala
+      signals: [nMSHR, lfbEntries]
+      status: pending
+    WB:
+      module: DCache.scala
+      signals: [stqFull]
+      status: pending
+    BTB:
+      module: BTB.scala
+      signals: [btb_index]
+      status: pending
+    # BOOM maps BTB and RSB to the same predictor module file (BTB.scala).
+    RSB:
+      module: BTB.scala
+      signals: [rsbPush]
+      status: pending
+    TLB:
+      module: TLB.scala
+      signals: [ptwBusy]
+      status: pending
+  rocket:
+    ROB:
+      module: null
+      signals: []
+      status: not_applicable
+    RS:
+      module: null
+      signals: []
+      status: not_applicable
+    LSQ:
+      module: L1DCache.scala
+      signals: [ldq_deqPtr, stq_deqPtr]
+      status: pending
+    MSHR:
+      module: L1DCache.scala
+      signals: [nMSHR, lfbLines]
+      status: pending
+    WB:
+      module: L1DCache.scala
+      signals: [storeBufferFull]
+      status: pending
+    BTB:
+      module: FetchUnit.scala
+      signals: [btb_index]
+      status: pending
+    RSB:
+      module: FetchUnit.scala
+      signals: [ras_push]
+      status: pending
+    TLB:
+      module: PTW.scala
+      signals: [ptwBusy]
+      status: pending
+  cva6:
+    ROB:
+      module: null
+      signals: []
+      status: not_applicable
+    RS:
+      module: Scoreboard.sv
+      signals: [freeMask, tagValid]
+      status: pending
+    LSQ:
+      module: LSU.sv
+      signals: [ldPtr, stPtr]
+      status: pending
+    MSHR:
+      module: DCache.sv
+      signals: [mshrCnt, lfbCnt]
+      status: pending
+    WB:
+      module: StoreBuffer.sv
+      signals: [bufFull]
+      status: pending
+    BTB:
+      module: BranchPredictor.sv
+      signals: [btb_index]
+      status: pending
+    RSB:
+      module: null
+      signals: []
+      status: not_applicable
+    TLB:
+      module: MMU.sv
+      signals: [ptwBusy]
+      status: pending

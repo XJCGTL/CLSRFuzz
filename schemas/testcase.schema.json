@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xjcgtl.github.io/clsrfuzz/testcase.schema.json",
+  "title": "CLSRFuzz testcase",
+  "type": "object",
+  "required": ["core", "sim", "program", "memory_map", "injection", "resources"],
+  "properties": {
+    "core": {"type": "string", "enum": ["boom", "rocket", "cva6"]},
+    "sim": {"type": "string", "enum": ["verilator", "spike", "gem5"]},
+    "program": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["asm", "elf", "trace"]},
+        "path": {"type": "string"}
+      }
+    },
+    "memory_map": {
+      "type": "object",
+      "required": ["base", "size", "stride"],
+      "properties": {
+        "base": {"type": "string"},
+        "size": {"type": "integer", "minimum": 1},
+        "stride": {"type": "integer", "minimum": 1}
+      }
+    },
+    "injection": {
+      "type": "object",
+      "description": "Active contention injection strategy and timing.",
+      "required": ["resource", "strategy", "start_cycle"],
+      "properties": {
+        "resource": {"type": "string"},
+        "strategy": {"type": "string"},
+        "start_cycle": {"type": "integer", "minimum": 0},
+        "duration": {"type": "integer", "minimum": 1}
+      }
+    },
+    "resources": {
+      "type": "array",
+      "description": "Resource types to monitor/score during execution. Include injection.resource explicitly when that resource must be scored.",
+      "items": {"type": "string"},
+      "minItems": 1
+    }
+  }
+}
