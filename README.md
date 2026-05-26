@@ -334,3 +334,175 @@ POC整理与报告撰写      :         task6, after task5, 10d
 - 向相关开源项目报告漏洞细节，并发布补丁和缓解措施建议，推动社区进行防护。  
 
 **参考资料：** 对应开源核文档及硬件模糊测试论文（如PORTRUSH）作为设计依据【49†L83-L91】【30†L125-L133】【44†L23-L26】等。
+
+## 八、实施计划与交付物（更新版）
+
+### 8.1 目标与范围（本阶段锁定）
+
+- **核**：BOOM、Rocket、CVA6（Ariane）
+- **仿真平台**：Verilator、Spike、Gem5
+- **优先资源类型**（按优先级）：ROB、LSQ（LDQ/STQ）、MSHR/LFB、发射队列/RS、写缓冲区、BTB/RSB、TLB/PTW
+
+### 8.2 静态识别方案完善
+
+**统一资源类型词表（词汇 + 模式）**
+
+| 资源类型 | 统一代号 | 关键词/命名模式（示例） | 关键容量/计数信号（示例） |
+| --- | --- | --- | --- |
+| ROB | ROB | `rob.*(head|tail|ptr|full)` | `rob_headPtr`、`rob_tailPtr`、`rob_full` |
+| IssueQ/RS | RS | `issue.*(slot|queue)`、`rs.*(alloc|free)` | `allocMask`、`issueEnq`、`freeMask` |
+| LSQ (LDQ/STQ) | LSQ | `ldq|stq|loadQueue|storeQueue` | `ldq_head`、`stq_head`、`queueFull` |
+| MSHR/LFB | MSHR | `mshr|lfb|lineBuffer` | `nMSHR`、`mshrCnt`、`lfbEntries` |
+| 写缓冲区 | WB | `writeBuffer|storeBuffer` | `storeBufferFull`、`bufFull` |
+| BTB | BTB | `btb.*(entry|index|hit)` | `btb_index`、`btb_hit` |
+| RSB | RSB | `rsb|returnStack|ras` | `rsbPush`、`rsbPop` |
+| TLB/PTW | TLB | `tlb|ptw|pageWalk` | `ptwBusy`、`tlbMiss` |
+
+**命名与信号模式清单（用于AST/正则）**
+
+- 指针/计数：`headPtr`、`tailPtr`、`count`、`numEntries`、`occupancy`
+- 分配/释放：`alloc`、`deq`、`enq`、`free`、`commit`
+- 状态：`full`、`empty`、`valid`、`ready`、`busy`
+- 旁路/替换：`repl`、`victim`、`evict`
+
+**各核模块/信号映射表（待核对状态字段）**
+
+| 资源类型 | BOOM 模块/信号 | Rocket 模块/信号 | CVA6 模块/信号 | 核对状态 |
+| --- | --- | --- | --- | --- |
+| ROB | `ReorderBuffer.scala` / `rob_headPtr`、`rob_tailPtr` | 无（顺序提交） | 无（顺序提交） | BOOM需核对 |
+| IssueQ/RS | `IssueUnit.scala` / `issueSlots`、`allocMask` | 无（scoreboard调度） | `Scoreboard.sv` / `freeMask`、`tagValid` | BOOM/CVA6需核对 |
+| LSQ | `StoreToLoadUnit.scala` / `ldq_head`、`stq_head` | `L1DCache.scala` / `ldq_deqPtr`、`stq_deqPtr` | `LSU.sv` / `ldPtr`、`stPtr` | 三者需核对 |
+| MSHR/LFB | `DCache.scala` / `nMSHR`、`lfbEntries` | `L1DCache.scala` / `nMSHR`、`lfbLines` | `DCache.sv` / `mshrCnt`、`lfbCnt` | 三者需核对 |
+| 写缓冲区 | `DCache.scala` / `stqFull` | `L1DCache.scala` / `storeBufferFull` | `StoreBuffer.sv` / `bufFull` | 三者需核对 |
+| BTB/RSB | `BTB.scala` / `btb_index`、`rsbPush` | `FetchUnit.scala` / `btb_index`、`ras_push` | `BranchPredictor.sv` / `btb_index` | 三者需核对 |
+| TLB/PTW | `TLB.scala` / `ptwBusy` | `PTW.scala` / `ptwBusy` | `MMU.sv` / `ptwBusy` | 三者需核对 |
+
+**自动化输出格式与人工复核流程**
+
+- **输出格式（JSON Lines）**：`{core, module, resource_type, signals, capacity_hint, confidence, evidence_path}`
+- **人工复核**：
+  1. 扫描输出中 `confidence < 0.7` 的条目；
+  2. 对照波形/RTL注释确认资源类型；
+  3. 在映射表“核对状态”列记录“已核对/待核对/不匹配”。
+
+### 8.3 阻塞场景构造（可复用注入矩阵）
+
+| 资源类型 | 注入策略 | 饱和判定阈值 | 监控指标 | 可行注入点（示例） |
+| --- | --- | --- | --- | --- |
+| ROB | 阻止提交或回收 | `rob_full==1` 连续N周期 | `rob_full_cycles` | BOOM `commit`/`rob` 端口 |
+| LSQ | 阻止内存响应 | `ldq/stq occupancy >= 90%` | `ldq_occ`、`stq_occ` | DCache/LSU memory接口 |
+| MSHR/LFB | 拉高Miss延迟 | `mshrCnt==max` | `mshr_full_cycles` | L1DCache miss处理路径 |
+| IssueQ/RS | 阻止issue或释放 | `allocMask==0` | `issueq_full_cycles` | IssueUnit/Scoreboard |
+| BTB/RSB | 训练冲突/污染 | `btb_hit_rate下降` | `btb_miss_rate` | Fetch/BranchPredictor |
+
+**核间可行注入点**（简表）
+
+- **BOOM**：DCache memory response、ROB commit、IssueUnit allocate
+- **Rocket**：DCache memory response、LSU/scoreboard stall
+- **CVA6**：LSU memory response、PTW busy、Scoreboard stall
+
+### 8.4 激励生成策略（微基准 + 搜索）
+
+**微基准集合（建议命名）**
+
+| 基准名 | 目标资源 | 核心参数 |
+| --- | --- | --- |
+| `mshr_sweep` | MSHR/LFB | LoadCount、Stride、PageWalk |
+| `lsq_fill` | LSQ | Load/Store比例、循环深度 |
+| `rob_stall` | ROB | 依赖链长度、分支密度 |
+| `issue_stress` | IssueQ/RS | 多发射指令比例、Mul链 |
+| `btb_pressure` | BTB/RSB | 目标分支数、训练轮数 |
+
+**参数搜索策略**
+
+- 阶段1：网格搜索（粗粒度范围覆盖）
+- 阶段2：基于表现的局部搜索（围绕高分区域细化）
+- 阶段3：稳定性验证（重复运行取均值/方差）
+
+**种子管理与去重规则**
+
+- `seed_id = hash(normalized_trace + memory_map + injection_schedule)`
+- 归一化规则：寄存器重命名、地址按页对齐、删除等价NOP
+- 去重条件：`(core, resource_type, seed_signature)` 唯一
+
+**顺序核专用策略（Rocket/CVA6）**
+
+- 侧重LSQ/MSHR/TLB/PTW压力而非ROB/RS
+- 使用长延迟访存 + fence 形成“顺序型阻塞”
+- 利用scoreboard依赖链拉长执行节拍
+
+### 8.5 Fuzz框架接口契约
+
+**输入格式（建议JSON）**
+
+| 字段 | 说明 |
+| --- | --- |
+| `core` | `boom`/`rocket`/`cva6` |
+| `sim` | `verilator`/`spike`/`gem5` |
+| `program` | 指令序列或ELF路径 |
+| `memory_map` | 基准数据区配置 |
+| `injection` | 注入策略与时序 |
+| `resources` | 目标资源类型列表 |
+
+**变异器/评估器/最小化器接口**
+
+- `mutate(testcase) -> testcase`（必须保持可执行）
+- `evaluate(sim_result) -> {score, labels, metrics}`
+- `minimize(testcase, target) -> testcase`
+
+**评分指标与归因输出**
+
+- 评分维度：资源占用峰值、满周期数、泄露时延差
+- 归因输出（JSON）：
+  `{seed_id, resource_type, top_instrs, minimized_trace, metrics}`
+
+### 8.6 与瞬态执行链路对接
+
+- **飞地触发条件**：秘密位依赖分支 + 可训练预测器
+- **同步竞争注入时序**：分支发射后、分支解析前的窗口（记录`branch_resolve_cycle`）
+- **侧信道观测指标**：`cycle_delta`、`rob_full_cycles`、`btb_miss_rate`
+- **噪声处理**：重复N次取中位数、与无注入对照作差
+
+**可复现实验脚本结构（建议）**
+
+- `configs/<core>/<resource>.yaml`
+- `scripts/run_<sim>.sh`
+- `outputs/<run_id>/metrics.jsonl`
+- `outputs/<run_id>/waves/`（可选波形）
+
+### 8.7 验证与评估闭环
+
+**实验矩阵（示例）**
+
+| 维度 | 取值 |
+| --- | --- |
+| Core | BOOM / Rocket / CVA6 |
+| Sim | Verilator / Spike / Gem5 |
+| Resource | ROB / LSQ / MSHR / BTB |
+| Injection | 延迟内存 / 强制stall / PTW忙 |
+
+**成功判定与统计方法**
+
+- 成功：`score >= threshold` 且 `p-value < 0.05`
+- 对照：无注入/随机注入/替换资源类型
+- 记录：均值、标准差、效应量（Cohen's d）
+
+**数据记录模板（字段）**
+
+`{run_id, core, sim, resource, injection, seed_id, score, p_value, cycles, notes}`
+
+### 8.8 风险与缓解完善
+
+- **误判来源**：非容量结构被识别、仿真延迟偏差、统计阈值不稳
+- **跨架构适配**：每核维护独立映射表 + 资源类型统一代号
+- **缓解可行性评估**：记录性能开销、面积/功耗估计、兼容性影响
+
+### 8.9 交付物清单（README内置模板）
+
+- [ ] 计划清单与时间线（本节）
+- [ ] 资源类型词表与核映射表
+- [ ] 仿真注入说明与矩阵
+- [ ] 微基准集合与参数范围
+- [ ] Fuzz接口文档与示例输入输出
+- [ ] 实验复现指南与脚本结构
+- [ ] 结果汇总模板与统计字段
