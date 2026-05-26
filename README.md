@@ -421,7 +421,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **种子管理与去重规则**
 
-- `seed_hash = hash(canonical_json({normalized_trace, memory_map, injection_schedule}))`（使用规范化序列化确保跨实现一致）
+- `seed_hash = hash(canonical_json({normalized_trace, memory_map, injection_schedule}))` (使用规范化序列化确保跨实现一致)
 - 归一化规则：寄存器重命名、地址按页对齐、删除等价NOP
 - 去重条件：`(core, resource_type, seed_hash)` 唯一
 
@@ -486,10 +486,10 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **成功判定与统计方法**
 
-- 成功：`score >= statistical_threshold` 且 `p-value < 0.05`（统计阈值由基线实验确定，如均值+3σ）
-- 占用类指标：使用 `occupancy_threshold`（如占用率≥90%）并记录对应持续周期数
-- 对照：无注入/随机注入/替换资源类型
-- 记录：均值、标准差、效应量（Cohen's d）
+- 成功: `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如均值+3σ)
+- 占用类指标: 使用 `occupancy_threshold` (如占用率≥90%) 并记录对应持续周期数
+- 对照: 无注入/随机注入/替换资源类型
+- 记录: 均值、标准差、效应量 (Cohen's d)
 
 **数据记录模板（字段）**
 
@@ -497,9 +497,9 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 ### 8.8 风险与缓解完善
 
-- **误判来源**：非容量结构被识别、仿真延迟偏差、统计阈值不稳
-- **跨架构适配**：每核维护独立映射表 + 资源类型统一代号
-- **缓解可行性评估**：记录性能开销、面积/功耗估计、兼容性影响
+- **误判来源**: 非容量结构被识别、仿真延迟偏差、统计阈值不稳
+- **跨架构适配**: 每核维护独立映射表 + 资源类型统一代号
+- **缓解可行性评估**: 记录性能开销、面积/功耗估计、兼容性影响
 
 ### 8.9 交付物清单（README内置模板）
 
