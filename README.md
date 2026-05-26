@@ -421,9 +421,9 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **种子管理与去重规则**
 
-- `seed_id = hash(normalized_trace + memory_map + injection_schedule)`
+- `seed_hash = hash(normalized_trace + memory_map + injection_schedule)`（用于唯一去重）
 - 归一化规则：寄存器重命名、地址按页对齐、删除等价NOP
-- 去重条件：`(core, resource_type, seed_signature)` 唯一
+- 去重条件：`(core, resource_type, seed_hash)` 唯一
 
 **顺序核专用策略（Rocket/CVA6）**
 
@@ -449,12 +449,15 @@ POC整理与报告撰写      :         task6, after task5, 10d
 - `mutate(testcase) -> testcase`（必须保持可执行）
 - `evaluate(sim_result) -> {score, labels, metrics}`
 - `minimize(testcase, target) -> testcase`
+  - `score`：数值型评分（如0–100，越高代表争用越强）
+  - `labels`：字符串列表（触发的资源类型/场景标签）
+  - `metrics`：键值字典（原始计数器、占用峰值、周期数等）
 
 **评分指标与归因输出**
 
 - 评分维度：资源占用峰值、满周期数、泄露时延差
 - 归因输出（JSON）：
-  `{seed_id, resource_type, top_instrs, minimized_trace, metrics}`
+  `{seed_hash, resource_type, top_instrs, minimized_trace, metrics}`
 
 ### 8.6 与瞬态执行链路对接
 
@@ -483,13 +486,13 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **成功判定与统计方法**
 
-- 成功：`score >= threshold` 且 `p-value < 0.05`
+- 成功：`score >= threshold` 且 `p-value < 0.05`（`threshold` 由基线实验确定，如均值+3σ或占用率≥90%）
 - 对照：无注入/随机注入/替换资源类型
 - 记录：均值、标准差、效应量（Cohen's d）
 
 **数据记录模板（字段）**
 
-`{run_id, core, sim, resource, injection, seed_id, score, p_value, cycles, notes}`
+`{run_id, core, sim, resource, injection, seed_hash, score, p_value, cycles, notes}`
 
 ### 8.8 风险与缓解完善
 
