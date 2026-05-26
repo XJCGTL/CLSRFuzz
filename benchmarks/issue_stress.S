@@ -1,6 +1,7 @@
 .section .text
 .globl _start
 _start:
+  # Prime initial values reduce short repeating arithmetic cycles in stress loops.
   li t0, 3
   li t1, 5
   li t2, 7

@@ -2,6 +2,7 @@
 .globl _start
 _start:
   li   t0, 1
+  # Use a large odd multiplier to keep dependency chain active and non-trivial.
   li   t1, 1234567
   li   t2, 0
   li   t3, 2000

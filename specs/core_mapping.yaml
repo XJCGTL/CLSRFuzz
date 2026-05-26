@@ -1,3 +1,4 @@
+signal_naming_policy: preserve_raw_rtl_names
 cores:
   boom:
     ROB:

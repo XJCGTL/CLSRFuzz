@@ -15,6 +15,10 @@ RESOURCE_PATTERNS = {
     "TLB": [r"tlb", r"ptw", r"pagewalk"],
 }
 
+BASE_CONFIDENCE = 0.4
+PATTERN_HIT_BONUS = 0.2
+MAX_CONFIDENCE = 0.95
+
 
 def scan_file(path: Path, core: str):
     try:
@@ -31,7 +35,7 @@ def scan_file(path: Path, core: str):
             if m:
                 matched.append(m.group(0))
         if matched:
-            confidence = min(0.4 + 0.2 * len(matched), 0.95)
+            confidence = min(BASE_CONFIDENCE + PATTERN_HIT_BONUS * len(matched), MAX_CONFIDENCE)
             findings.append(
                 {
                     "core": core,

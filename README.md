@@ -413,7 +413,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **种子管理与去重规则**
 
-- `seed_hash = SHA-256(canonical_json({normalized_trace, memory_map, injection_schedule}))` (使用SHA-256与规范化序列化确保跨实例一致)
+- `seed_hash = SHA-256(canonicalize_json({normalized_trace, memory_map, injection_schedule}))` (使用SHA-256与规范化序列化确保跨实例一致)
 - 归一化规则：寄存器重命名、地址按页对齐、删除等价NOP
 - 去重条件：`(core, resource_type, seed_hash)` 唯一（保留core/resource维度，避免跨核/跨资源混用同一hash）
 
