@@ -421,7 +421,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **种子管理与去重规则**
 
-- `seed_hash = hash(canonical_json({normalized_trace, memory_map, injection_schedule}))` (使用规范化序列化确保跨实例一致)
+- `seed_hash = sha256(canonical_json({normalized_trace, memory_map, injection_schedule}))` (使用SHA-256与规范化序列化确保跨实例一致)
 - 归一化规则：寄存器重命名、地址按页对齐、删除等价NOP
 - 去重条件：`(core, resource_type, seed_hash)` 唯一
 
@@ -486,8 +486,8 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **成功判定与统计方法**
 
-- 成功 (时延类指标): `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如均值+3σ)
-- 统计说明: `p-value` 来自注入与对照的两样本检验；零假设为“无差异”，`p-value < 0.05` 表示拒绝零假设
+- 成功 (时延类指标): `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如均值+3*标准差)
+- 统计说明: `p-value` 使用两样本 Welch t-test（不要求方差相等）；零假设为“无差异”，`p-value < 0.05` 表示拒绝零假设
 - 占用类指标: 使用 `occupancy_threshold` (如占用率≥90%) 并记录对应持续周期数
 - 对照: 无注入/随机注入/替换资源类型
 - 记录: 均值、标准差、效应量 (Cohen's d)
