@@ -26,6 +26,7 @@
     },
     "injection": {
       "type": "object",
+      "description": "Active contention injection strategy and timing.",
       "required": ["resource", "strategy", "start_cycle"],
       "properties": {
         "resource": {"type": "string"},
@@ -36,6 +37,7 @@
     },
     "resources": {
       "type": "array",
+      "description": "Resource types to monitor/score during execution; may include injection.resource plus additional observers.",
       "items": {"type": "string"},
       "minItems": 1
     }

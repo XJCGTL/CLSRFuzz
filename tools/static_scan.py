@@ -15,7 +15,7 @@ RESOURCE_PATTERNS = {
     "TLB": [r"tlb", r"ptw", r"pagewalk"],
 }
 COMPILED_RESOURCE_PATTERNS = {
-    resource: [re.compile(p) for p in patterns]
+    resource: [re.compile(p, re.IGNORECASE) for p in patterns]
     for resource, patterns in RESOURCE_PATTERNS.items()
 }
 
@@ -33,22 +33,22 @@ def scan_file(path: Path, core: str):
         text = path.read_text(encoding="utf-8", errors="ignore")
     except Exception:
         return []
-    lower = text.lower()
     findings = []
     for resource, patterns in COMPILED_RESOURCE_PATTERNS.items():
         matched = []
         for regex in patterns:
-            m = regex.search(lower)
+            m = regex.search(text)
             if m:
                 matched.append(m.group(0))
         if matched:
-            confidence = min(BASE_CONFIDENCE + PATTERN_HIT_BONUS * len(matched), MAX_CONFIDENCE)
+            unique_matches = sorted(set(matched))
+            confidence = min(BASE_CONFIDENCE + PATTERN_HIT_BONUS * len(unique_matches), MAX_CONFIDENCE)
             findings.append(
                 {
                     "core": core,
                     "module": path.name,
                     "resource_type": resource,
-                    "signals": sorted(set(matched)),
+                    "signals": unique_matches,
                     "capacity_hint": "unknown",
                     "confidence": round(confidence, 2),
                     "evidence_path": str(path),
