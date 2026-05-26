@@ -461,7 +461,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 ### 8.6 与瞬态执行链路对接
 
-- **飞地触发条件**：秘密位依赖分支 + 可训练预测器（飞地=预测执行的投机窗口/Speculative Domain）
+- **投机执行窗口触发条件**：秘密位依赖分支 + 可训练预测器（本文“投机执行窗口”不指TEE类隔离飞地）
 - **同步竞争注入时序**：分支发射后、分支解析前的窗口（记录`branch_resolve_cycle`）
 - **侧信道观测指标**：`cycle_delta`、`rob_full_cycles`、`btb_miss_rate`
 - **噪声处理**：重复N次取中位数、与无注入对照作差
@@ -486,7 +486,7 @@ POC整理与报告撰写      :         task6, after task5, 10d
 
 **成功判定与统计方法**
 
-- 成功 (时延类指标): `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如均值+3σ；p-value用于检验“注入与对照无差异”的零假设)
+- 成功 (时延类指标): `score >= statistical_threshold` 且 `p-value < 0.05` (统计阈值由基线实验确定，如均值+3σ；p-value用于检验“注入与对照无差异”的零假设，p-value < 0.05 表示拒绝零假设并确认差异显著)
 - 占用类指标: 使用 `occupancy_threshold` (如占用率≥90%) 并记录对应持续周期数
 - 对照: 无注入/随机注入/替换资源类型
 - 记录: 均值、标准差、效应量 (Cohen's d)
