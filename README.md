@@ -1,3 +1,36 @@
+- **benchmarks/**（RISC‑V 汇编微基准，用于施压不同资源）
+  - `btb_pressure.S`：构造大量分支历史，施压 BTB。
+  - `issue_stress.S`：密集乘加链，施压发射/执行端口。
+  - `lsq_fill.S`：大量 load/store，施压 LSQ。
+  - `mshr_sweep.S`：跨页加载，施压 MSHR/LFB。
+  - `rob_stall.S`：长依赖链运算，施压 ROB。
+- **configs/**（不同内核/资源的注入配置示例）
+  - boom/
+    - `rob.yaml`：BOOM + ROB 注入与阈值配置。
+    - `mshr.yaml`：BOOM + MSHR 注入与阈值配置。
+  - rocket/
+    - `lsq.yaml`：Rocket + LSQ 注入与阈值配置。
+  - cva6/
+    - `tlb.yaml`：CVA6 + TLB/PTW 注入与阈值配置。
+- **examples/**（示例输入/输出）
+  - `testcase.boom.rob.json`：测试用例 JSON 示例（core/sim/program/injection/resources）。
+  - `evaluate.result.json`：评估结果示例（score/metrics/归因信息等）。
+- **schemas/**
+  - `testcase.schema.json`：测试用例 JSON Schema 约束。
+- **scripts/**（仿真运行脚本骨架，当前为 stub）
+  - `run_verilator.sh`：Verilator 运行入口（写出 runner.json）。
+  - `run_spike.sh`：Spike 运行入口（写出 runner.json）。
+  - `run_gem5.sh`：Gem5 运行入口（写出 runner.json）。
+- **specs/**（规格与词表）
+  - `core_mapping.yaml`：资源类型在不同内核的模块/信号映射表。
+  - `injection_matrix.yaml`：资源注入策略矩阵与阈值定义。
+  - `resource_vocab.yaml`：资源类型词表与信号模式。
+- **templates/**
+  - `results_template.jsonl`：结果输出 JSONL 模板行。
+- **tools/**
+  - `static_scan.py`：RTL 静态扫描脚本（正则识别资源并输出 JSONL）。
+
+
 # CLSRFuzz
 # 执行摘要
 
